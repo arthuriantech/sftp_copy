@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 import os
 import subprocess
+import traceback
 from glob import glob
 from pprint import pprint
 from datetime import datetime
@@ -92,5 +93,5 @@ if __name__ == '__main__':
         files_backup(files_list())
         files_clear()
         #
-    except Exception as msg:
-        pprint('{}: {}'.format(msg.__class__.__name__, msg))
+    except Exception:
+        traceback.print_exc()
