@@ -34,12 +34,14 @@ def files_list():
     sp_ds.wait()
     res = sp_ds.communicate()[0]
     #
+    # Get files: res[[datetime, file name]]
     res = res.split('\n')
     res = filter(lambda item: item.startswith('-'), res)
     res = [item.split()[-2:] for item in res]
     res = map(lambda item: [datetime.strptime(item[0], dt_format), item[1]], res)
     #
     files = []
+    # Search last file.
     for item in copy_prefixes:
         tmp = filter(lambda key: key[1].startswith(item), res)
         tmp = max(tmp, key=lambda item: item[0])
@@ -52,6 +54,10 @@ def files_backup(files):
     cmd_cp = 'scp -P {p} -i \'{k}\' -q \'{u}@{h}:{d}/{f}\' \'.\''
     #
     for item in files:
+        if os.path.exists(item):
+            pprint('Exist: {}'.format(item))
+            continue
+        #
         sp_ds = subprocess.Popen(cmd_cp.format(
             p=ssh_port, k=ssh_pkey,
             u=ssh_user, h=ssh_host,
@@ -61,21 +67,30 @@ def files_backup(files):
         )
         sp_ds.wait()
         res = sp_ds.communicate()[1]
+        #
+        # Print error message.
         if res: pprint(res)
+        else: pprint('Copy: {}'.format(item))
 #
 #
 def files_clear():
-    if os.getcwd() != dir_local: os.chdir(dir_local)
+    if copy_count <= 0: return
     #
-    files = os.listdir('.')
-
-    return files
+    for prefix in copy_prefixes:
+        files = glob('{}*'.format(prefix))
+        #
+        while len(files) > copy_count:
+            item = min(files, key=lambda item: os.path.getctime(item))
+            os.unlink(item)
+            pprint('Remove: {}'.format(item))
+            files = glob('{}*'.format(prefix))
 #
 #
-try:
-    os.chdir(dir_local)
-    #files_backup(files_list())
-    #files_clear()
-    #
-except Exception as msg:
-    pprint('{}: {}'.format(msg.__class__.__name__, msg))
+if __name__ == '__main__':
+    try:
+        os.chdir(dir_local)
+        files_backup(files_list())
+        files_clear()
+        #
+    except Exception as msg:
+        pprint('{}: {}'.format(msg.__class__.__name__, msg))
